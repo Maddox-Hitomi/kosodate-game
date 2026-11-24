@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>あかちゃんごっこ - こそだてあそび</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* 3歳児向け誤操作防止・スマホ縦画面最適化 */
+        * {
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: none;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background: linear-gradient(180deg, #FFF5F7 0%, #FFF9E6 50%, #F0F9FF 100%);
+        }
+
+        /* ゆらゆら誘導アニメーション */
+        @keyframes gentleBounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-6px) scale(1.03); }
+        }
+        .animate-bounce-gentle {
+            animation: gentleBounce 2.2s infinite ease-in-out;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(255, 182, 193, 0.6)); }
+            50% { transform: scale(1.06); filter: drop-shadow(0 0 18px rgba(255, 140, 170, 0.9)); }
+        }
+        .animate-pulse-glow {
+            animation: pulseGlow 1.8s infinite ease-in-out;
+        }
+
+        @keyframes floatHeart {
+            0% { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-110px) scale(1.3) rotate(15deg); opacity: 0; }
+        }
+        .particle-float {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            animation: floatHeart 1.1s ease-out forwards;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            15% { transform: scale(1.18); }
+            30% { transform: scale(1); }
+            45% { transform: scale(1.14); }
+        }
+        .animate-heartbeat {
+            animation: heartbeat 1.1s infinite;
+        }
+
+        /* ぷっくりボタンデザイン */
+        .bubbly-btn {
+            border-radius: 28px;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.12), 0 10px 20px rgba(0,0,0,0.08);
+            transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease;
+        }
+        .bubbly-btn:active {
+            transform: translateY(4px) scale(0.97);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.12), 0 4px 10px rgba(0,0,0,0.08);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-between relative">
+
+    <!-- ヘッダー（ホームボタン＆おとON/OFF） -->
+    <header class="w-full max-w-md px-4 pt-3 pb-1 flex items-center justify-between z-30">
+        <button id="home-btn" onclick="goHome()" class="bubbly-btn bg-white/90 border-2 border-pink-200 px-3.5 py-2 flex items-center gap-1.5 text-pink-600 font-bold text-sm hidden">
+            <span class="text-xl">🏠</span>
+            <span>おうち</span>
+        </button>
+        <div id="stage-badge" class="bg-white/80 backdrop-blur-sm px-4 py-1.5 rounded-full border-2 border-amber-200 text-amber-800 font-extrabold text-base shadow-sm mx-auto">
+            あかちゃんごっこ
+        </div>
+        <button id="sound-btn" onclick="toggleSound()" class="bubbly-btn bg-white/90 border-2 border-sky-200 w-11 h-11 flex items-center justify-center text-xl text-sky-600" aria-label="おとのきりかえ">
+            🔊
+        </button>
+    </header>
+
+    <!-- メインコンテンツエリア -->
+    <main id="app-container" class="w-full max-w-md flex-1 flex flex-col items-center justify-center px-4 pb-4 relative overflow-hidden">
+        <!-- JSで各シーンを描画 -->
+    </main>
+
+    <!-- 祝福・クリアモーダルオーバーレイ（失敗なし・花丸演出） -->
+    <div id="celebration-overlay" class="fixed inset-0 bg-pink-900/30 backdrop-blur-xs z-40 hidden flex-col items-center justify-center p-6">
+        <div class="bg-white rounded-[36px] border-4 border-amber-300 p-6 w-full max-w-sm flex flex-col items-center text-center shadow-2xl animate-bounce-gentle">
+            <!-- はなまるSVG -->
+            <svg class="w-32 h-32 mb-2" viewBox="0 0 120 120">
+                <path d="M60,12 C68,4 82,8 85,19 C96,17 106,27 102,38 C113,43 115,57 106,64 C112,74 106,87 95,88 C95,99 83,106 73,101 C67,111 53,111 47,101 C37,106 25,99 25,88 C14,87 8,74 14,64 C5,57 7,43 18,38 C14,27 24,17 35,19 C38,8 52,4 60,12 Z" fill="none" stroke="#FF5E7E" stroke-width="6" stroke-linecap="round"/>
+                <circle cx="60" cy="58" r="32" fill="none" stroke="#FF5E7E" stroke-width="5"/>
+                <text x="60" y="65" text-anchor="middle" fill="#FF5E7E" font-size="18" font-weight="800">すごい！</text>
+            </svg>
+            <h2 id="cel-title" class="text-2xl font-extrabold text-pink-600 mb-1">とっても じょうず！</h2>
+            <p id="cel-sub" class="text-base font-bold text-gray-600 mb-5">つぎの あそびに いく？</p>
+            <div class="flex gap-3 w-full">
+                <button onclick="goHome()" class="bubbly-btn flex-1 bg-amber-100 border-2 border-amber-300 py-3.5 text-amber-800 font-extrabold text-lg">
+                    🏠 えらぶ
+                </button>
+                <button id="next-stage-btn" onclick="goNextStage()" class="bubbly-btn flex-1 bg-gradient-to-b from-pink-400 to-pink-500 border-2 border-pink-300 py-3.5 text-white font-extrabold text-lg">
+                    つぎへ ▶
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ==========================================
+         * 1. Web Audio API 優しい効果音ジェネレーター
+         * ==========================================
+         */
+        class GentleSound {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playPop(freq = 520) {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.45, now + 0.12);
+
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+
+            playHeartbeat() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                [0, 0.22].forEach((offset, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(idx === 0 ? 110 : 95, now + offset);
+                    osc.frequency.exponentialRampToValueAtTime(45, now + offset + 0.16);
+
+                    gain.gain.setValueAtTime(0.35, now + offset);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.18);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + offset);
+                    osc.stop(now + offset + 0.19);
+                });
+            }
+
+            playSparkle() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [587.33, 783.99, 987.77, 1174.66]; // D5, G5, B5, D6
+                notes.forEach((freq, i) => {
+                    const now = this.ctx.currentTime + i * 0.07;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now);
+
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.36);
+                });
+            }
+
+            playFanfare() {
+                if (!this.enabled) return;
+                this.init();
+                const melody = [
+                    { f: 523.25, t: 0, d: 0.15 },    // C5
+                    { f: 659.25, t: 0.14, d: 0.15 }, // E5
+                    { f: 783.99, t: 0.28, d: 0.15 }, // G5
+                    { f: 1046.50, t: 0.44, d: 0.45 } // C6
+                ];
+                melody.forEach(n => {
+                    const now = this.ctx.currentTime + n.t;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(n.f, now);
+
+                    gain.gain.setValueAtTime(0.22, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + n.d);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + n.d + 0.05);
+                });
+            }
+
+            playLullabyNote(step = 0) {
+                if (!this.enabled) return;
+                this.init();
+                const scale = [523.25, 587.33, 659.25, 523.25, 659.25, 783.99];
+                const freq = scale[step % scale.length];
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now);
+
+                gain.gain.setValueAtTime(0.16, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.48);
+            }
+        }
+
+        const sound = new GentleSound();
+
+        function toggleSound() {
+            sound.enabled = !sound.enabled;
+            const btn = document.getElementById('sound-btn');
+            btn.textContent = sound.enabled ? '🔊' : '🔇';
+            if (sound.enabled) sound.playPop(600);
+        }
+
+        /**
+         * ==========================================
+         * 2. パーティクル（ハート・星・音符）演出
+         * ==========================================
+         */
+        function spawnParticles(x, y, emojis = ['💖', '✨', '🌸'], count = 4) {
+            for (let i = 0; i < count; i++) {
+                const el = document.createElement('div');
+                el.className = 'particle-float text-2xl sm:text-3xl';
+                el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                const offsetX = (Math.random() - 0.5) * 80;
+                const offsetY = (Math.random() - 0.5) * 40;
+                el.style.left = `${x + offsetX - 14}px`;
+                el.style.top = `${y + offsetY - 14}px`;
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 1100);
+            }
+        }
+
+        /**
+         * ==========================================
+         * 3. アプリ状態・画面遷移管理
+         * ==========================================
+         */
+        let currentStage = 0; // 0: ホーム, 1: 妊婦健診, 2: 出産, 3: お世話, 4: 保育園
+
+        function goHome() {
+            sound.playPop(480);
+            document.getElementById('celebration-overlay').classList.add('hidden');
+            document.getElementById('celebration-overlay').classList.remove('flex');
+            currentStage = 0;
+            renderHome();
+        }
+
+        function startStage(stageNum) {
+            sound.playPop(580);
+            document.getElementById('celebration-overlay').classList.add('hidden');
+            document.getElementById('celebration-overlay').classList.remove('flex');
+            currentStage = stageNum;
+
+            document.getElementById('home-btn').classList.remove('hidden');
+            const badge = document.getElementById('stage-badge');
+
+            if (stageNum === 1) {
+                badge.textContent = '① にんぷけんしん';
+                renderStage1();
+            } else if (stageNum === 2) {
+                badge.textContent = '② あかちゃんたんじょう';
+                renderStage2();
+            } else if (stageNum === 3) {
+                badge.textContent = '③ あかちゃんのおせわ';
+                renderStage3();
+            } else if (stageNum === 4) {
+                badge.textContent = '④ ほいくえんへいくよ';
+                renderStage4();
+            }
+        }
+
+        function showCelebration(title, sub) {
+            sound.playFanfare();
+            document.getElementById('cel-title').textContent = title;
+            document.getElementById('cel-sub').textContent = sub;
+            const nextBtn = document.getElementById('next-stage-btn');
+            if (currentStage >= 4) {
+                nextBtn.innerHTML = 'もういっかい ↻';
+            } else {
+                nextBtn.innerHTML = 'つぎへ ▶';
+            }
+            const overlay = document.getElementById('celebration-overlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+
+        function goNextStage() {
+            if (currentStage >= 4) {
+                startStage(1);
+            } else {
+                startStage(currentStage + 1);
+            }
+        }
+
+        /**
+         * ==========================================
+         * 4. ホーム画面（大きなイラストボタン4つ）
+         * ==========================================
+         */
+        function renderHome() {
+            document.getElementById('home-btn').classList.add('hidden');
+            document.getElementById('stage-badge').textContent = 'あかちゃんごっこ';
+
+            const container = document.getElementById('app-container');
+            container.innerHTML = `
+                <div class="w-full flex flex-col items-center justify-between h-full py-2">
+                    <!-- タイトル＆メインイラスト -->
+                    <div class="text-center mt-1">
+                        <div class="inline-block bg-pink-100 text-pink-600 font-extrabold text-xs px-3 py-1 rounded-full mb-1">
+                            タッチして あそぼう！
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl font-extrabold text-pink-600 tracking-wide">
+                            ママと あかちゃん
+                        </h1>
+                    </div>
+
+                    <!-- 4つの大きなごっこ遊びカード -->
+                    <div class="grid grid-cols-2 gap-3.5 w-full my-auto">
+                        <!-- 1. にんぷけんしん -->
+                        <button onclick="startStage(1)" class="bubbly-btn bg-gradient-to-b from-rose-50 to-rose-100 border-4 border-rose-300 p-3 flex flex-col items-center justify-center aspect-square animate-bounce-gentle" style="animation-delay: 0s;">
+                            <svg class="w-20 h-20 mb-1" viewBox="0 0 100 100">
+                                <!-- ママのおなかと聴診器 -->
+                                <circle cx="50" cy="54" r="34" fill="#FFD1DC" stroke="#FF8FA3" stroke-width="3"/>
+                                <path d="M35,54 Q50,38 65,54 Q50,70 35,54 Z" fill="#FFF" opacity="0.7"/>
+                                <circle cx="50" cy="54" r="10" fill="#FF5E7E"/>
+                                <path d="M50,22 C50,12 68,12 68,26 C68,40 50,44 50,44" fill="none" stroke="#60A5FA" stroke-width="4" stroke-linecap="round"/>
+                                <text x="76" y="34" font-size="18">💓</text>
+                            </svg>
+                            <span class="bg-rose-500 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full mb-0.5">ステップ 1</span>
+                            <span class="text-rose-800 font-extrabold text-base">にんぷけんしん</span>
+                        </button>
+
+                        <!-- 2. あかちゃんたんじょう -->
+                        <button onclick="startStage(2)" class="bubbly-btn bg-gradient-to-b from-amber-50 to-amber-100 border-4 border-amber-300 p-3 flex flex-col items-center justify-center aspect-square animate-bounce-gentle" style="animation-delay: 0.2s;">
+                            <svg class="w-20 h-20 mb-1" viewBox="0 0 100 100">
+                                <!-- こうのとり/おくるみ赤ちゃん -->
+                                <circle cx="50" cy="52" r="32" fill="#FEF3C7"/>
+                                <ellipse cx="50" cy="60" rx="22" ry="26" fill="#FBCFE8" stroke="#F472B6" stroke-width="3"/>
+                                <circle cx="50" cy="44" r="16" fill="#FFE4E1" stroke="#F472B6" stroke-width="2.5"/>
+                                <circle cx="44" cy="43" r="2" fill="#4B5563"/>
+                                <circle cx="56" cy="43" r="2" fill="#4B5563"/>
+                                <path d="M46,49 Q50,53 54,49" fill="none" stroke="#FF5E7E" stroke-width="2.5" stroke-linecap="round"/>
+                                <text x="16" y="30" font-size="16">✨</text>
+                                <text x="72" y="30" font-size="16">👑</text>
+                            </svg>
+                            <span class="bg-amber-500 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full mb-0.5">ステップ 2</span>
+                            <span class="text-amber-900 font-extrabold text-base">しゅっさん</span>
+                        </button>
+
+                        <!-- 3. あかちゃんのおせわ -->
+                        <button onclick="startStage(3)" class="bubbly-btn bg-gradient-to-b from-sky-50 to-sky-100 border-4 border-sky-300 p-3 flex flex-col items-center justify-center aspect-square animate-bounce-gentle" style="animation-delay: 0.4s;">
+                            <svg class="w-20 h-20 mb-1" viewBox="0 0 100 100">
+                                <!-- 哺乳瓶 -->
+                                <g transform="rotate(-25 50 50)">
+                                    <rect x="36" y="36" width="28" height="46" rx="10" fill="#FFFFFF" stroke="#38BDF8" stroke-width="3"/>
+                                    <rect x="39" y="50" width="22" height="28" rx="6" fill="#FEF9C3"/>
+                                    <rect x="34" y="28" width="32" height="10" rx="4" fill="#F472B6"/>
+                                    <path d="M44,28 L46,16 Q50,12 54,16 L56,28 Z" fill="#FBBF24"/>
+                                </g>
+                                <text x="68" y="75" font-size="18">🍼</text>
+                            </svg>
+                            <span class="bg-sky-500 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full mb-0.5">ステップ 3</span>
+                            <span class="text-sky-900 font-extrabold text-base">おせわごっこ</span>
+                        </button>
+
+                        <!-- 4. ほいくえんへいこう -->
+                        <button onclick="startStage(4)" class="bubbly-btn bg-gradient-to-b from-emerald-50 to-emerald-100 border-4 border-emerald-300 p-3 flex flex-col items-center justify-center aspect-square animate-bounce-gentle" style="animation-delay: 0.6s;">
+                            <svg class="w-20 h-20 mb-1" viewBox="0 0 100 100">
+                                <!-- かわいいリュック -->
+                                <rect x="26" y="28" width="48" height="54" rx="18" fill="#FBBF24" stroke="#D97706" stroke-width="3"/>
+                                <rect x="32" y="50" width="36" height="24" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="2.5"/>
+                                <path d="M40,28 Q50,14 60,28" fill="none" stroke="#D97706" stroke-width="4" stroke-linecap="round"/>
+                                <circle cx="43" cy="61" r="2.5" fill="#78350F"/>
+                                <circle cx="57" cy="61" r="2.5" fill="#78350F"/>
+                                <path d="M47,65 Q50,68 53,65" fill="none" stroke="#78350F" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            <span class="bg-emerald-500 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full mb-0.5">ステップ 4</span>
+                            <span class="text-emerald-900 font-extrabold text-base">ほいくえん</span>
+                        </button>
+                    </div>
+
+                    <!-- 順番に遊ぶ大きなスタートボタン -->
+                    <button onclick="startStage(1)" class="bubbly-btn w-full bg-gradient-to-r from-pink-400 via-rose-400 to-amber-400 border-4 border-white py-4 text-white font-extrabold text-xl tracking-wider flex items-center justify-center gap-2 shadow-lg">
+                        <span>▶ はじめから あそぶ！</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        /**
+         * ==========================================
+         * 5. ステージ1：にんぷけんしん（エコー検査＆フルーツ）
+         * ==========================================
+         */
+        function renderStage1() {
+            let echoProgress = 0;
+            const targetProgress = 100;
+            let lastHeartbeatTime = 0;
+            let isCompleted = false;
+
+            const container = document.getElementById('app-container');
+            container.innerHTML = `
+                <div class="w-full h-full flex flex-col items-center justify-between py-1">
+                    <!-- エコーモニター画面 -->
+                    <div class="w-full bg-slate-800 rounded-3xl border-4 border-sky-300 p-3 shadow-inner relative overflow-hidden flex flex-col items-center">
+                        <div class="w-full flex justify-between items-center text-xs text-sky-300 font-bold mb-1 px-1">
+                            <span>📺 エコーカメラ</span>
+                            <span id="echo-percent">0%</span>
+                        </div>
+                        <div class="w-full h-32 bg-slate-900 rounded-2xl relative flex items-center justify-center overflow-hidden border border-slate-700">
+                            <!-- エコー波紋 -->
+                            <div id="echo-wave" class="absolute w-24 h-24 rounded-full border-2 border-emerald-400/40 scale-50 transition-transform duration-300"></div>
+                            <!-- おなかの中の赤ちゃん（なぞるとはっきり見える） -->
+                            <div id="echo-baby" class="opacity-10 transition-opacity duration-200 flex flex-col items-center">
+                                <svg class="w-24 h-24 animate-heartbeat" viewBox="0 0 100 100">
+                                    <ellipse cx="50" cy="54" rx="28" ry="24" fill="#A7F3D0" opacity="0.35"/>
+                                    <circle cx="42" cy="46" r="14" fill="#6EE7B7"/>
+                                    <ellipse cx="58" cy="58" rx="14" ry="11" fill="#6EE7B7"/>
+                                    <circle cx="38" cy="44" r="2" fill="#064E3B"/>
+                                    <path d="M36,50 Q40,53 43,50" fill="none" stroke="#064E3B" stroke-width="2" stroke-linecap="round"/>
+                                    <text x="62" y="38" font-size="16">💓</text>
+                                </svg>
+                            </div>
+                            <p id="echo-hint" class="absolute bottom-2 text-emerald-300 text-xs font-bold animate-pulse">
+                                ママの おなかを なでてみてね！
+                            </p>
+                        </div>
+                        <!-- ハートゲージ -->
+                        <div class="w-full bg-slate-700 h-3 rounded-full mt-2 overflow-hidden">
+                            <div id="echo-bar" class="bg-gradient-to-r from-pink-400 to-rose-500 h-full w-0 transition-all duration-150"></div>
+                        </div>
+                    </div>
+
+                    <!-- ママの大きなお腹イラスト（タッチ・なぞりエリア） -->
+                    <div id="belly-area" class="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center cursor-pointer animate-pulse-glow my-1">
+                        <svg class="w-full h-full" viewBox="0 0 240 240">
+                            <!-- ママのワンピースと大きなお腹 -->
+                            <path d="M55,210 C45,140 60,70 120,65 C180,70 195,140 185,210 Z" fill="#FFB6C1" stroke="#FF8FA3" stroke-width="5"/>
+                            <!-- ママの顔 -->
+                            <circle cx="120" cy="45" r="32" fill="#FFE4D6" stroke="#F4A28C" stroke-width="4"/>
+                            <path d="M88,42 C88,15 152,15 152,42 C152,26 88,26 88,42 Z" fill="#5C4033"/>
+                            <circle cx="110" cy="44" r="3" fill="#4A3525"/>
+                            <circle cx="130" cy="44" r="3" fill="#4A3525"/>
+                            <path d="M113,54 Q120,61 127,54" fill="none" stroke="#FF5E7E" stroke-width="3" stroke-linecap="round"/>
+                            <!-- お腹のハイライト（なでる場所） -->
+                            <circle cx="120" cy="145" r="56" fill="#FFD6E0" stroke="#FFF" stroke-width="4" stroke-dasharray="8 6"/>
+                            <text x="120" y="138" text-anchor="middle" fill="#E11D48" font-size="16" font-weight="800">ここを</text>
+                            <text x="120" y="160" text-anchor="middle" fill="#E11D48" font-size="16" font-weight="800">なでてね🖐️</text>
+                        </svg>
+                    </div>
+
+                    <!-- フルーツボタン（栄養をあげるアクション） -->
+                    <div class="w-full bg-white/80 rounded-3xl p-2.5 border-2 border-rose-200 flex items-center justify-around">
+                        <span class="text-xs font-extrabold text-rose-700 pl-1">えいよう<br>あげる？</span>
+                        <button onclick="feedMom(event, '🍎')" class="bubbly-btn bg-rose-100 border-2 border-rose-300 w-14 h-14 text-3xl flex items-center justify-center">🍎</button>
+                        <button onclick="feedMom(event, '🍌')" class="bubbly-btn bg-amber-100 border-2 border-amber-300 w-14 h-14 text-3xl flex items-center justify-center">🍌</button>
+                        <button onclick="feedMom(event, '🍓')" class="bubbly-btn bg-pink-100 border-2 border-pink-300 w-14 h-14 text-3xl flex items-center justify-center">🍓</button>
+                    </div>
+                </div>
+            `;
+
+            const belly = document.getElementById('belly-area');
+
+            function handleRub(clientX, clientY) {
+                if (isCompleted) return;
+                const now = Date.now();
+                if (now - lastHeartbeatTime > 450) {
+                    sound.playHeartbeat();
+                    lastHeartbeatTime = now;
+                    spawnParticles(clientX, clientY, ['💓', '✨', '👶'], 2);
+                }
+
+                echoProgress = Math.min(targetProgress, echoProgress + 4.5);
+                const pct = Math.floor(echoProgress);
+                document.getElementById('echo-percent').textContent = `${pct}%`;
+                document.getElementById('echo-bar').style.width = `${pct}%`;
+                document.getElementById('echo-baby').style.opacity = Math.max(0.15, echoProgress / 100);
+
+                const wave = document.getElementById('echo-wave');
+                wave.style.transform = `scale(${0.7 + (echoProgress % 20) * 0.04})`;
+
+                if (echoProgress >= targetProgress && !isCompleted) {
+                    isCompleted = true;
+                    document.getElementById('echo-hint').textContent = 'あかちゃん 元気いっぱい！';
+                    setTimeout(() => {
+                        showCelebration('あかちゃん みえたね！', 'ドクドク げんきな おとが したよ');
+                    }, 500);
+                }
+            }
+
+            belly.addEventListener('pointermove', (e) => {
+                if (e.buttons > 0 || e.pointerType === 'touch') {
+                    handleRub(e.clientX, e.clientY);
+                }
+            });
+            belly.addEventListener('pointerdown', (e) => {
+                handleRub(e.clientX, e.clientY);
+            });
+
+            window.feedMom = function(e, fruit) {
+                sound.playSparkle();
+                spawnParticles(e.clientX, e.clientY, [fruit, '💖', '😋'], 5);
+                handleRub(e.clientX, e.clientY);
+            };
+        }
+
+        /**
+         * ==========================================
+         * 6. ステージ2：あかちゃんたんじょう（しゅっさん）
+         * ==========================================
+         */
+        function renderStage2() {
+            let taps = 0;
+            const maxTaps = 8;
+            let born = false;
+
+            const container = document.getElementById('app-container');
+            container.innerHTML = `
+                <div class="w-full h-full flex flex-col items-center justify-between py-2">
+                    <!-- ガイドメッセージ -->
+                    <div class="bg-amber-100 border-2 border-amber-300 rounded-full px-5 py-2 text-amber-900 font-extrabold text-base sm:text-lg shadow-sm">
+                        <span id="birth-guide">ハートを タッチして おうえんしよう！</span>
+                    </div>
+
+                    <!-- メインステージ（光のたまご → 赤ちゃん誕生） -->
+                    <div id="birth-stage" class="relative w-72 h-72 flex items-center justify-center">
+                        <!-- 誕生前：キラキラハート＆光のクッション -->
+                        <button id="heart-tap-btn" class="w-60 h-60 rounded-full bg-gradient-to-b from-pink-100 to-amber-100 border-4 border-pink-300 shadow-xl flex flex-col items-center justify-center animate-pulse-glow active:scale-95 transition-transform">
+                            <span id="big-heart-icon" class="text-8xl mb-2 transition-transform duration-200">💖</span>
+                            <span class="bg-white/90 text-pink-600 font-extrabold px-4 py-1 rounded-full text-base">
+                                タッチ！ (${taps}/${maxTaps})
+                            </span>
+                        </button>
+
+                        <!-- 誕生後：かわいい赤ちゃん（初期非表示） -->
+                        <div id="newborn-baby" class="hidden flex-col items-center justify-center animate-bounce-gentle cursor-pointer">
+                            <svg class="w-64 h-64" viewBox="0 0 220 220">
+                                <!-- 祝福の光 -->
+                                <circle cx="110" cy="110" r="95" fill="#FEF3C7" opacity="0.7"/>
+                                <!-- おくるみ -->
+                                <path d="M55,120 C55,185 165,185 165,120 C165,90 55,90 55,120 Z" fill="#FBCFE8" stroke="#F472B6" stroke-width="5"/>
+                                <path d="M65,130 Q110,160 155,130" fill="none" stroke="#F472B6" stroke-width="4" stroke-linecap="round"/>
+                                <!-- 赤ちゃんの顔 -->
+                                <circle cx="110" cy="92" r="42" fill="#FFE4D6" stroke="#F4A28C" stroke-width="4"/>
+                                <!-- ほっぺ -->
+                                <circle cx="88" cy="100" r="7" fill="#FF9AA2" opacity="0.6"/>
+                                <circle cx="132" cy="100" r="7" fill="#FF9AA2" opacity="0.6"/>
+                                <!-- ニコニコ目 -->
+                                <path d="M90,88 Q96,80 102,88" fill="none" stroke="#4A3525" stroke-width="4" stroke-linecap="round"/>
+                                <path d="M118,88 Q124,80 130,88" fill="none" stroke="#4A3525" stroke-width="4" stroke-linecap="round"/>
+                                <!-- かわいいお口 -->
+                                <path d="M102,104 Q110,114 118,104 Z" fill="#FF5E7E"/>
+                                <!-- 産毛 -->
+                                <path d="M110,50 Q116,40 122,48" fill="none" stroke="#5C4033" stroke-width="3" stroke-linecap="round"/>
+                            </svg>
+                            <span class="bg-pink-500 text-white font-extrabold px-5 py-1.5 rounded-full text-base shadow-md -mt-4">
+                                なでて だっこしよう！
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 下部ゲージ -->
+                    <div class="w-full bg-white/80 rounded-3xl p-3 border-2 border-amber-200 flex items-center gap-2">
+                        <span class="text-2xl">🌟</span>
+                        <div class="flex-1 bg-amber-100 h-4 rounded-full overflow-hidden">
+                            <div id="birth-bar" class="bg-gradient-to-r from-amber-400 to-pink-500 h-full w-0 transition-all duration-200"></div>
+                        </div>
+                        <span class="text-2xl">👶</span>
+                    </div>
+                </div>
+            `;
+
+            const heartBtn = document.getElementById('heart-tap-btn');
+            const babyDiv = document.getElementById('newborn-baby');
+
+            heartBtn.addEventListener('pointerdown', (e) => {
+                if (born) return;
+                taps++;
+                sound.playPop(440 + taps * 45);
+                spawnParticles(e.clientX, e.clientY, ['💖', '✨', '🌸'], 4);
+
+                const pct = Math.min(100, Math.round((taps / maxTaps) * 100));
+                document.getElementById('birth-bar').style.width = `${pct}%`;
+
+                const icon = document.getElementById('big-heart-icon');
+                icon.style.transform = `scale(${1 + taps * 0.05})`;
+                heartBtn.querySelector('span:last-child').textContent = `タッチ！ (${taps}/${maxTaps})`;
+
+                if (taps >= maxTaps) {
+                    born = true;
+                    sound.playSparkle();
+                    heartBtn.classList.add('hidden');
+                    babyDiv.classList.remove('hidden');
+                    babyDiv.classList.add('flex');
+                    document.getElementById('birth-guide').textContent = 'うまれたよ！なでてあげよう💕';
+                    spawnParticles(window.innerWidth / 2, window.innerHeight / 2, ['🎉', '👶', '💖', '✨'], 12);
+                }
+            });
+
+            let cuddleCount = 0;
+            babyDiv.addEventListener('pointerdown', (e) => {
+                cuddleCount++;
+                sound.playSparkle();
+                spawnParticles(e.clientX, e.clientY, ['💖', '🥰', '✨'], 5);
+                if (cuddleCount >= 3) {
+                    setTimeout(() => {
+                        showCelebration('あかちゃん たんじょう！', 'おめでとう！とっても かわいいね');
+                    }, 400);
+                }
+            });
+        }
+
+        /**
+         * ==========================================
+         * 7. ステージ3：あかちゃんのおせわ（ミルク・おむつ・ねんね）
+         * ==========================================
+         */
+        function renderStage3() {
+            let careStep = 1; // 1: ミルク, 2: おむつ, 3: 寝かしつけ
+            let progress = 0;
+            let lullabyNoteIdx = 0;
+
+            const container = document.getElementById('app-container');
+            container.innerHTML = `
+                <div class="w-full h-full flex flex-col items-center justify-between py-1">
+                    <!-- ステップ表示タブ -->
+                    <div class="w-full flex justify-around bg-white/80 p-1.5 rounded-full border-2 border-sky-200">
+                        <span id="tab-1" class="px-3 py-1 rounded-full text-xs font-extrabold bg-sky-500 text-white">1. ミルク</span>
+                        <span id="tab-2" class="px-3 py-1 rounded-full text-xs font-extrabold text-gray-400">2. おむつ</span>
+                        <span id="tab-3" class="px-3 py-1 rounded-full text-xs font-extrabold text-gray-400">3. ねんね</span>
+                    </div>
+
+                    <!-- 赤ちゃんイラストエリア -->
+                    <div id="care-baby-zone" class="relative w-64 h-64 flex flex-col items-center justify-center my-1">
+                        <svg id="care-baby-svg" class="w-56 h-56" viewBox="0 0 220 220">
+                            <!-- ベビーベッドの枕 -->
+                            <rect x="30" y="25" width="160" height="170" rx="40" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="4"/>
+                            <!-- 赤ちゃんの体（ロンパース） -->
+                            <rect x="65" y="105" width="90" height="70" rx="28" fill="#FEF08A" stroke="#FACC15" stroke-width="4"/>
+                            <!-- おむつマーク（ステップ2で目立つ） -->
+                            <path id="baby-diaper" d="M72,145 L148,145 L136,175 L84,175 Z" fill="#FFFFFF" stroke="#94A3B8" stroke-width="3"/>
+                            <text id="diaper-icon" x="110" y="166" text-anchor="middle" font-size="16" class="hidden">💧</text>
+
+                            <!-- 赤ちゃんの頭 -->
+                            <circle cx="110" cy="76" r="38" fill="#FFE4D6" stroke="#F4A28C" stroke-width="4"/>
+                            <!-- 目（起きている状態） -->
+                            <g id="eyes-open">
+                                <circle cx="96" cy="74" r="4" fill="#4A3525"/>
+                                <circle cx="124" cy="74" r="4" fill="#4A3525"/>
+                            </g>
+                            <!-- 目（ねんね状態） -->
+                            <g id="eyes-closed" class="hidden">
+                                <path d="M90,75 Q96,81 102,75" fill="none" stroke="#4A3525" stroke-width="3.5" stroke-linecap="round"/>
+                                <path d="M118,75 Q124,81 130,75" fill="none" stroke="#4A3525" stroke-width="3.5" stroke-linecap="round"/>
+                            </g>
+                            <!-- 口 -->
+                            <circle id="baby-mouth" cx="110" cy="92" r="6" fill="#FF8FA3"/>
+                        </svg>
+                        <div id="care-instruction" class="bg-white/95 border-2 border-pink-300 px-4 py-1.5 rounded-full text-pink-600 font-extrabold text-sm shadow-sm -mt-3">
+                            ミルクを おくちに もっていこう！
+                        </div>
+                    </div>
+
+                    <!-- お世話道具コントロールエリア -->
+                    <div id="care-tool-zone" class="w-full h-28 bg-white/90 rounded-3xl border-2 border-sky-200 p-3 flex items-center justify-center relative">
+                        <!-- ドラッグできる哺乳瓶 -->
+                        <div id="milk-bottle" class="bubbly-btn bg-sky-100 border-2 border-sky-400 px-5 py-2 flex items-center gap-2 cursor-grab active:cursor-grabbing z-20 animate-bounce-gentle">
+                            <span class="text-4xl">🍼</span>
+                            <span class="font-extrabold text-sky-800 text-base">ミルク</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const babyZone = document.getElementById('care-baby-zone');
+            const toolZone = document.getElementById('care-tool-zone');
+
+            // ステップ1：哺乳瓶ドラッグ（またはタップでも飲める優しい設計）
+            function setupMilkStep() {
+                const bottle = document.getElementById('milk-bottle');
+                let isDragging = false;
+
+                function feedMilk(x, y) {
+                    if (careStep !== 1) return;
+                    sound.playPop(500 + progress * 3);
+                    spawnParticles(x, y, ['🍼', '💖', '😋'], 3);
+                    progress += 25;
+                    if (progress >= 100) {
+                        progress = 0;
+                        careStep = 2;
+                        sound.playSparkle();
+                        switchToDiaperStep();
+                    }
+                }
+
+                bottle.addEventListener('pointerdown', (e) => {
+                    isDragging = true;
+                    bottle.setPointerCapture(e.pointerId);
+                });
+
+                bottle.addEventListener('pointermove', (e) => {
+                    if (!isDragging || careStep !== 1) return;
+                    const rect = babyZone.getBoundingClientRect();
+                    if (e.clientY < rect.bottom && e.clientY > rect.top) {
+                        feedMilk(e.clientX, e.clientY);
+                    }
+                });
+
+                bottle.addEventListener('pointerup', (e) => {
+                    isDragging = false;
+                    // 3歳児がタップしただけでも進むように救済
+                    feedMilk(e.clientX, e.clientY);
+                });
+            }
+
+            // ステップ2：おむつ替え（タップでピカピカ）
+            function switchToDiaperStep() {
+                document.getElementById('tab-1').className = 'px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-700';
+                document.getElementById('tab-2').className = 'px-3 py-1 rounded-full text-xs font-extrabold bg-sky-500 text-white';
+                document.getElementById('care-instruction').textContent = 'あたらしい おむつに かえよう！';
+                document.getElementById('diaper-icon').classList.remove('hidden');
+
+                toolZone.innerHTML = `
+                    <button id="diaper-btn" class="bubbly-btn bg-amber-100 border-2 border-amber-400 px-6 py-3 flex items-center gap-2 animate-bounce-gentle">
+                        <span class="text-4xl">🩲</span>
+                        <span class="font-extrabold text-amber-900 text-base">おむつを かえる！</span>
+                    </button>
+                `;
+
+                document.getElementById('diaper-btn').addEventListener('pointerdown', (e) => {
+                    if (careStep !== 2) return;
+                    progress += 35;
+                    sound.playPop(620);
+                    spawnParticles(e.clientX, e.clientY, ['✨', '🫧', '💖'], 4);
+                    if (progress >= 100) {
+                        progress = 0;
+                        careStep = 3;
+                        document.getElementById('diaper-icon').textContent = '✨';
+                        sound.playSparkle();
+                        switchToSleepStep();
+                    }
+                });
+            }
+
+            // ステップ3：寝かしつけ（おなかトントン）
+            function switchToSleepStep() {
+                document.getElementById('tab-2').className = 'px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-700';
+                document.getElementById('tab-3').className = 'px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-500 text-white';
+                document.getElementById('care-instruction').textContent = 'おなかを トントンして ねかしつけよう！';
+
+                toolZone.innerHTML = `
+                    <button id="tonton-btn" class="bubbly-btn bg-indigo-100 border-2 border-indigo-400 px-6 py-3 flex items-center gap-2 animate-pulse-glow">
+                        <span class="text-4xl">🖐️</span>
+                        <span class="font-extrabold text-indigo-900 text-base">トントン する</span>
+                    </button>
+                `;
+
+                function doTonton(e) {
+                    if (careStep !== 3) return;
+                    progress += 20;
+                    sound.playLullabyNote(lullabyNoteIdx++);
+                    spawnParticles(e.clientX, e.clientY, ['🎵', '⭐', '💤'], 3);
+
+                    if (progress >= 100) {
+                        careStep = 4;
+                        document.getElementById('eyes-open').classList.add('hidden');
+                        document.getElementById('eyes-closed').classList.remove('hidden');
+                        document.getElementById('care-instruction').textContent = 'スヤスヤ… おやすみなさい💤';
+                        setTimeout(() => {
+                            showCelebration('おせわ だいせいこう！', 'あかちゃん 気持ちよさそうに ねむったよ');
+                        }, 700);
+                    }
+                }
+
+                document.getElementById('tonton-btn').addEventListener('pointerdown', doTonton);
+                babyZone.addEventListener('pointerdown', doTonton);
+            }
+
+            setupMilkStep();
+        }
+
+        /**
+         * ==========================================
+         * 8. ステージ4：ほいくえんへしゅっぱつ！
+         * ==========================================
+         */
+        function renderStage4() {
+            let packedCount = 0;
+            const totalItems = 3;
+
+            const container = document.getElementById('app-container');
+            container.innerHTML = `
+                <div class="w-full h-full flex flex-col items-center justify-between py-1">
+                    <!-- ガイド -->
+                    <div id="nursery-guide" class="bg-emerald-100 border-2 border-emerald-300 rounded-full px-5 py-1.5 text-emerald-900 font-extrabold text-base shadow-sm">
+                        リュックに もちものを いれよう！
+                    </div>
+
+                    <!-- メイン表示（リュック → 保育園で先生とタッチ） -->
+                    <div id="nursery-stage" class="relative w-64 h-64 flex flex-col items-center justify-center">
+                        <!-- リュックSVG -->
+                        <div id="backpack-view" class="flex flex-col items-center animate-bounce-gentle">
+                            <svg class="w-56 h-56" viewBox="0 0 200 200">
+                                <rect x="45" y="45" width="110" height="125" rx="36" fill="#FBBF24" stroke="#D97706" stroke-width="5"/>
+                                <path d="M75,45 Q100,18 125,45" fill="none" stroke="#D97706" stroke-width="7" stroke-linecap="round"/>
+                                <!-- ポケット -->
+                                <rect x="62" y="100" width="76" height="52" rx="18" fill="#FEF3C7" stroke="#D97706" stroke-width="4"/>
+                                <circle cx="85" cy="122" r="4" fill="#78350F"/>
+                                <circle cx="115" cy="122" r="4" fill="#78350F"/>
+                                <path d="M93,132 Q100,139 107,132" fill="none" stroke="#78350F" stroke-width="3.5" stroke-linecap="round"/>
+                            </svg>
+                            <span class="bg-amber-500 text-white font-extrabold px-4 py-1 rounded-full text-sm -mt-3">
+                                あと <span id="remain-items">3</span>こ いれてね！
+                            </span>
+                        </div>
+
+                        <!-- 保育園の先生とハイタッチ（準備完了後に表示） -->
+                        <div id="teacher-view" class="hidden flex-col items-center justify-center cursor-pointer animate-pulse-glow">
+                            <svg class="w-60 h-60" viewBox="0 0 220 220">
+                                <!-- 保育園の屋根 -->
+                                <polygon points="110,15 25,65 195,65" fill="#F87171"/>
+                                <rect x="40" y="65" width="140" height="125" rx="12" fill="#FFFBEB" stroke="#FCD34D" stroke-width="4"/>
+                                <!-- 先生 -->
+                                <circle cx="110" cy="115" r="34" fill="#FFE4D6" stroke="#F4A28C" stroke-width="3"/>
+                                <path d="M76,112 C76,82 144,82 144,112" fill="#5C4033"/>
+                                <circle cx="99" cy="114" r="3" fill="#4A3525"/>
+                                <circle cx="121" cy="114" r="3" fill="#4A3525"/>
+                                <path d="M102,125 Q110,133 118,125" fill="none" stroke="#FF5E7E" stroke-width="3" stroke-linecap="round"/>
+                                <!-- エプロン -->
+                                <path d="M72,190 C72,150 148,150 148,190 Z" fill="#6EE7B7" stroke="#10B981" stroke-width="3"/>
+                                <!-- ハイタッチの手 -->
+                                <circle cx="162" cy="135" r="22" fill="#FEF08A" stroke="#F59E0B" stroke-width="3"/>
+                                <text x="162" y="143" text-anchor="middle" font-size="24">✋</text>
+                            </svg>
+                            <span class="bg-emerald-500 text-white font-extrabold px-5 py-1.5 rounded-full text-base shadow-md -mt-3">
+                                せんせいと ハイタッチ！
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 持ち物アイテムボタン -->
+                    <div id="items-tray" class="w-full bg-white/90 rounded-3xl border-2 border-emerald-200 p-3 flex items-center justify-around">
+                        <button onclick="packItem(this, event, '🩲')" class="bubbly-btn bg-sky-100 border-2 border-sky-300 px-4 py-2.5 flex flex-col items-center">
+                            <span class="text-3xl">🩲</span>
+                            <span class="text-xs font-extrabold text-sky-800 mt-1">おむつ</span>
+                        </button>
+                        <button onclick="packItem(this, event, '🍼')" class="bubbly-btn bg-pink-100 border-2 border-pink-300 px-4 py-2.5 flex flex-col items-center">
+                            <span class="text-3xl">🍼</span>
+                            <span class="text-xs font-extrabold text-pink-800 mt-1">ミルク</span>
+                        </button>
+                        <button onclick="packItem(this, event, '🧣')" class="bubbly-btn bg-amber-100 border-2 border-amber-300 px-4 py-2.5 flex flex-col items-center">
+                            <span class="text-3xl">🧣</span>
+                            <span class="text-xs font-extrabold text-amber-800 mt-1">タオル</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            window.packItem = function(btn, e, emoji) {
+                if (btn.disabled) return;
+                btn.disabled = true;
+                btn.classList.add('opacity-30', 'scale-90');
+                packedCount++;
+                sound.playPop(520 + packedCount * 80);
+                spawnParticles(e.clientX, e.clientY, [emoji, '✨', '🎒'], 4);
+
+                const remain = totalItems - packedCount;
+                document.getElementById('remain-items').textContent = remain;
+
+                if (packedCount >= totalItems) {
+                    sound.playSparkle();
+                    setTimeout(() => {
+                        document.getElementById('backpack-view').classList.add('hidden');
+                        document.getElementById('teacher-view').classList.remove('hidden');
+                        document.getElementById('teacher-view').classList.add('flex');
+                        document.getElementById('nursery-guide').textContent = 'ほいくえんに とうちゃく！';
+                        document.getElementById('items-tray').innerHTML = `
+                            <span class="text-emerald-700 font-extrabold text-base py-2">
+                                せんせいの おててを タッチしよう！ ✋
+                            </span>
+                        `;
+                    }, 500);
+                }
+            };
+
+            document.getElementById('teacher-view').addEventListener('pointerdown', (e) => {
+                sound.playSparkle();
+                spawnParticles(e.clientX, e.clientY, ['🙌', '🌸', '💖', '✨'], 8);
+                setTimeout(() => {
+                    showCelebration('いってらっしゃい！', 'ほいくえん げんきに とうえんできたね！');
+                }, 500);
+            });
+        }
+
+        // 初期表示
+        window.onload = function() {
+            renderHome();
+        };
+    </script>
+</body>
+</html>
